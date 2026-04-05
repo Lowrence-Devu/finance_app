@@ -2,17 +2,5 @@ services:
   - type: web
     name: finance-backend
     env: node
-    plan: free
     buildCommand: cd server && npm install
     startCommand: cd server && npm start
-    envVars:
-      - key: MONGODB_URI
-        value: mongodb+srv://lowrencedevu:RMAdCvyQYJjXEwO0@cluster1.pybq5vu.mongodb.net/?appName=Cluster1
-      - key: JWT_SECRET
-        value: 00ce1c1f55c7e448be1c8d94ee18d32eb91f3c73340afca787db7f58e06cfb58
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "5000"
-      - key: CORS_ORIGIN
-        value: https://finance-app.vercel.app

@@ -21,7 +21,7 @@ const allowedOrigins = [
 ];
 
 /* =========================
-   ✅ SOCKET.IO CONFIG
+   ✅ SOCKET.IO
 ========================= */
 const io = new SocketIOServer(httpServer, {
   cors: {
@@ -43,23 +43,14 @@ app.use((req, res, next) => {
 });
 
 /* =========================
-   ✅ CORS (FIXED)
+   ✅ CORS (FINAL FIX)
 ========================= */
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: allowedOrigins,
   credentials: true,
 }));
 
-// ✅ FIXED (no crash now)
-app.options("/*", cors());
+// ❌ DO NOT USE app.options()
 
 /* =========================
    ✅ RATE LIMIT

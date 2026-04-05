@@ -11,86 +11,119 @@ const logger = require('./utils/logger');
 
 const app = express();
 const httpServer = createServer(app);
+
+/* =========================
+   ✅ ALLOWED ORIGINS
+========================= */
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://financeapp-pink.vercel.app"
+];
+
+/* =========================
+   ✅ SOCKET.IO CONFIG
+========================= */
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST'],
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-// Security Middleware
+/* =========================
+   ✅ SECURITY MIDDLEWARE
+========================= */
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
 
-// Rate limiting
+// Fix Firebase popup issue
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  next();
+});
+
+/* =========================
+   ✅ CORS CONFIG (IMPORTANT)
+========================= */
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow Postman
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+}));
+
+// Handle preflight requests
+app.options("*", cors());
+
+/* =========================
+   ✅ RATE LIMITING
+========================= */
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: "Too many requests, please try again later.",
 });
 app.use('/api/', limiter);
 
-// Body parsing middleware
+/* =========================
+   ✅ BODY PARSER
+========================= */
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.urlencoded({ extended: true }));
 
-// Logging middleware
-app.use(morgan(':remote-addr :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" - :response-time ms'));
+/* =========================
+   ✅ LOGGING
+========================= */
+app.use(morgan('dev'));
 
-// MongoDB Connection
+/* =========================
+   ✅ DATABASE CONNECTION
+========================= */
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  logger.warn('MONGODB_URI is not defined in .env file - using in-memory mode');
+  logger.warn('No MongoDB URI provided');
 } else {
-  mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
-    .then(() => {
-      logger.info('MongoDB connected successfully');
-    })
-    .catch(err => {
-      logger.warn('MongoDB connection warning (server will continue):', err.message);
-      logger.info('Running in limited mode - database operations may fail');
-    });
+  mongoose.connect(MONGODB_URI)
+    .then(() => logger.info('MongoDB connected'))
+    .catch(err => logger.error('MongoDB error:', err));
 }
 
-// Monitor MongoDB connection changes
-mongoose.connection.on('connected', () => {
-  logger.info('MongoDB re-connected');
-});
-
-mongoose.connection.on('disconnected', () => {
-  logger.warn('MongoDB disconnected - retrying...');
-});
-
-// Import routes
+/* =========================
+   ✅ ROUTES
+========================= */
 const userRoutes = require('./routes/users');
 const transactionRoutes = require('./routes/transactions');
 
-// API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 
-// Root endpoint
+/* =========================
+   ✅ TEST ROUTES
+========================= */
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Finance App API is running',
-    timestamp: new Date(),
-    version: '2.0.0'
-  });
+  res.json({ message: "Finance API running" });
 });
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'operational',
-    timestamp: new Date(),
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  res.json({
+    status: "ok",
+    mongodb: mongoose.connection.readyState === 1
+      ? "connected"
+      : "disconnected"
   });
 });
 
-// Real-time WebSocket connection
+/* =========================
+   ✅ SOCKET EVENTS
+========================= */
 let connectedUsers = new Map();
 
 io.on('connection', (socket) => {
@@ -99,70 +132,40 @@ io.on('connection', (socket) => {
   socket.on('user-join', (userId) => {
     connectedUsers.set(userId, socket.id);
     io.emit('users-online', Array.from(connectedUsers.keys()));
-    logger.info(`User ${userId} joined (socket: ${socket.id})`);
   });
 
   socket.on('transaction-created', (data) => {
     io.emit('new-transaction', data);
-    logger.info(`Transaction created by user ${data.userId}`);
-  });
-
-  socket.on('transaction-updated', (data) => {
-    io.emit('update-transaction', data);
-  });
-
-  socket.on('transaction-deleted', (data) => {
-    io.emit('delete-transaction', data);
   });
 
   socket.on('disconnect', () => {
-    // Find and remove user from connectedUsers
     for (let [userId, socketId] of connectedUsers.entries()) {
       if (socketId === socket.id) {
         connectedUsers.delete(userId);
-        io.emit('users-online', Array.from(connectedUsers.keys()));
-        logger.info(`User ${userId} disconnected`);
         break;
       }
     }
   });
-
-  socket.on('error', (err) => {
-    logger.error(`Socket error for ${socket.id}:`, err);
-  });
 });
 
-// Error handling middleware
+/* =========================
+   ✅ ERROR HANDLING
+========================= */
 app.use((err, req, res, next) => {
-  logger.error('Unhandled error:', err);
-  res.status(err.status || 500).json({
-    error: {
-      message: err.message || 'Internal Server Error',
-      status: err.status || 500,
-      timestamp: new Date(),
-    },
-  });
+  logger.error(err);
+  res.status(500).json({ message: err.message });
 });
 
-// 404 handler
+/* =========================
+   ✅ 404 HANDLER
+========================= */
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ message: "Route not found" });
 });
 
-// Start server
+/* =========================
+   ✅ START SERVER
+========================= */
 httpServer.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, gracefully shutting down');
-  httpServer.close(() => {
-    logger.info('HTTP server closed');
-    mongoose.connection.close(false, () => {
-      logger.info('MongoDB connection closed');
-      process.exit(0);
-    });
-  });
-}); 

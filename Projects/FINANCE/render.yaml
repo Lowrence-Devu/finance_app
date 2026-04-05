@@ -3,9 +3,8 @@ services:
     name: finance-backend
     env: node
     plan: free
-    buildCommand: npm --prefix server install
-    startCommand: npm --prefix server start
-    root: .
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
     envVars:
       - key: MONGODB_URI
         value: mongodb+srv://lowrencedevu:RMAdCvyQYJjXEwO0@cluster1.pybq5vu.mongodb.net/?appName=Cluster1

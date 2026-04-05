@@ -6,205 +6,126 @@ const { validateTransactionCreate, validateTransactionQuery, handleValidationErr
 const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 
-// Get all transactions for the authenticated user with filtering and pagination
+/* =========================
+   ✅ GET ALL TRANSACTIONS
+========================= */
 router.get('/', authMiddleware, validateTransactionQuery, handleValidationErrors, async (req, res) => {
   try {
-    const { page = 1, limit = 20, type, category, startDate, endDate, sortBy = 'date' } = req.query;
-    const skip = (page - 1) * limit;
+    const { page = 1, limit = 20 } = req.query;
 
-    // Build filter
-    const filter = { user: mongoose.Types.ObjectId(req.userId) };
-    if (type) filter.type = type;
-    if (category) filter.category = category;
-    if (startDate || endDate) {
-      filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
-    }
-
-    const [transactions, total] = await Promise.all([
-      Transaction.find(filter)
-        .sort({ [sortBy]: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .populate('user', 'name email'),
-      Transaction.countDocuments(filter)
-    ]);
-
-    res.json({
-      success: true,
-      data: transactions,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / limit)
-      }
-    });
-  } catch (err) {
-    logger.error('Get transactions error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get transaction by ID
-router.get('/:id', authMiddleware, async (req, res) => {
-  try {
-    const transaction = await Transaction.findOne({
-      _id: req.params.id,
-      user: mongoose.Types.ObjectId(req.userId)
-    }).populate('user', 'name email');
-
-    if (!transaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-
-    res.json({ success: true, data: transaction });
-  } catch (err) {
-    logger.error('Get transaction error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Create a new transaction
-router.post('/', authMiddleware, validateTransactionCreate, handleValidationErrors, async (req, res) => {
-  try {
-    const { amount, type, category, date, description, tags, subcategory, isRecurring, recurringRule, currency, notes } = req.body;
-
-    const transaction = new Transaction({
-      user: mongoose.Types.ObjectId(req.userId),
-      amount,
-      type,
-      category,
-      date,
-      description,
-      tags,
-      subcategory,
-      isRecurring,
-      recurringRule,
-      currency,
-      notes,
-      status: 'completed'
-    });
-
-    await transaction.save();
-    await transaction.populate('user', 'name email');
-
-    logger.info(`Transaction created: ${transaction._id} for user ${req.userEmail}`);
-    res.status(201).json({ success: true, data: transaction });
-  } catch (err) {
-    logger.error('Create transaction error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Update a transaction
-router.put('/:id', authMiddleware, validateTransactionCreate, handleValidationErrors, async (req, res) => {
-  try {
-    const transaction = await Transaction.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        user: mongoose.Types.ObjectId(req.userId)
-      },
-      { $set: req.body },
-      { new: true, runValidators: true }
-    ).populate('user', 'name email');
-
-    if (!transaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-
-    logger.info(`Transaction updated: ${req.params.id}`);
-    res.json({ success: true, data: transaction });
-  } catch (err) {
-    logger.error('Update transaction error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete a transaction
-router.delete('/:id', authMiddleware, async (req, res) => {
-  try {
-    const transaction = await Transaction.findOneAndDelete({
-      _id: req.params.id,
+    const transactions = await Transaction.find({
       user: mongoose.Types.ObjectId(req.userId)
     });
 
-    if (!transaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
+    res.json({ success: true, data: transactions });
 
-    logger.info(`Transaction deleted: ${req.params.id}`);
-    res.json({ success: true, message: 'Transaction deleted successfully' });
   } catch (err) {
-    logger.error('Delete transaction error:', err);
+    logger.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get transaction summary/analytics
+/* =========================
+   ✅ ANALYTICS (MOVE UP)
+========================= */
 router.get('/analytics/summary', authMiddleware, async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-
-    const filter = { user: mongoose.Types.ObjectId(req.userId) };
-    if (startDate || endDate) {
-      filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
-    }
-
     const summary = await Transaction.aggregate([
-      { $match: filter },
+      { $match: { user: mongoose.Types.ObjectId(req.userId) } },
       {
         $group: {
           _id: '$type',
-          total: { $sum: '$amount' },
-          count: { $sum: 1 },
-          average: { $avg: '$amount' },
-          max: { $max: '$amount' },
-          min: { $min: '$amount' }
+          total: { $sum: '$amount' }
         }
-      },
-      { $sort: { total: -1 } }
+      }
     ]);
 
     res.json({ success: true, data: summary });
+
   } catch (err) {
-    logger.error('Analytics error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get transaction by category
 router.get('/analytics/by-category', authMiddleware, async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-
-    const filter = { user: mongoose.Types.ObjectId(req.userId) };
-    if (startDate || endDate) {
-      filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
-    }
-
-    const byCategory = await Transaction.aggregate([
-      { $match: filter },
+    const data = await Transaction.aggregate([
+      { $match: { user: mongoose.Types.ObjectId(req.userId) } },
       {
         $group: {
           _id: '$category',
-          total: { $sum: '$amount' },
-          count: { $sum: 1 }
+          total: { $sum: '$amount' }
         }
-      },
-      { $sort: { total: -1 } }
+      }
     ]);
 
-    res.json({ success: true, data: byCategory });
+    res.json({ success: true, data });
+
   } catch (err) {
-    logger.error('Category analytics error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-module.exports = router; 
+/* =========================
+   ✅ CREATE
+========================= */
+router.post('/', authMiddleware, validateTransactionCreate, handleValidationErrors, async (req, res) => {
+  try {
+    const transaction = new Transaction({
+      ...req.body,
+      user: mongoose.Types.ObjectId(req.userId)
+    });
+
+    await transaction.save();
+    res.json({ success: true, data: transaction });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* =========================
+   ✅ UPDATE
+========================= */
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const transaction = await Transaction.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    res.json({ success: true, data: transaction });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* =========================
+   ✅ DELETE
+========================= */
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    await Transaction.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* =========================
+   ❗ DYNAMIC ROUTE LAST
+========================= */
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id);
+    res.json({ success: true, data: transaction });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

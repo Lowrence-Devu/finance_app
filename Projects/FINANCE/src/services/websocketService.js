@@ -1,6 +1,6 @@
-import io from 'socket.io-client';
+import { io } from "socket.io-client";
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:5000';
+const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 class WebSocketService {
   constructor() {
@@ -10,12 +10,15 @@ class WebSocketService {
   }
 
   connect(userId) {
-    if (this.socket) return;
+    // ✅ Prevent duplicate connections
+    if (this.socket?.connected) return;
 
     this.userId = userId;
-    this.socket = io(WS_URL, {
+
+    this.socket = io(BASE_URL, {
+      transports: ["websocket"], // 🔥 important for production
       auth: {
-        token: localStorage.getItem('token'),
+        token: localStorage.getItem("token"),
       },
       reconnection: true,
       reconnectionDelay: 1000,
@@ -23,34 +26,38 @@ class WebSocketService {
       reconnectionAttempts: 5,
     });
 
-    this.socket.on('connect', () => {
-      console.log('WebSocket connected');
-      this.socket.emit('user-join', userId);
+    this.socket.on("connect", () => {
+      console.log("✅ WebSocket connected");
+      this.socket.emit("user-join", userId);
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
+    this.socket.on("disconnect", () => {
+      console.log("❌ WebSocket disconnected");
     });
 
-    this.socket.on('error', (error) => {
-      console.error('WebSocket error:', error);
+    this.socket.on("connect_error", (error) => {
+      console.error("WebSocket connection error:", error);
     });
 
-    // Register event listeners
-    this.socket.on('new-transaction', (data) => {
-      this.emitEvent('transaction-created', data);
+    this.socket.on("error", (error) => {
+      console.error("WebSocket error:", error);
     });
 
-    this.socket.on('update-transaction', (data) => {
-      this.emitEvent('transaction-updated', data);
+    // ✅ Events
+    this.socket.on("new-transaction", (data) => {
+      this.emitEvent("transaction-created", data);
     });
 
-    this.socket.on('delete-transaction', (data) => {
-      this.emitEvent('transaction-deleted', data);
+    this.socket.on("update-transaction", (data) => {
+      this.emitEvent("transaction-updated", data);
     });
 
-    this.socket.on('users-online', (users) => {
-      this.emitEvent('users-online', users);
+    this.socket.on("delete-transaction", (data) => {
+      this.emitEvent("transaction-deleted", data);
+    });
+
+    this.socket.on("users-online", (users) => {
+      this.emitEvent("users-online", users);
     });
   }
 
@@ -58,11 +65,12 @@ class WebSocketService {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+      console.log("🔌 WebSocket manually disconnected");
     }
   }
 
   emit(event, data) {
-    if (this.socket) {
+    if (this.socket?.connected) {
       this.socket.emit(event, data);
     }
   }
@@ -77,23 +85,21 @@ class WebSocketService {
   off(event, callback) {
     if (this.listeners.has(event)) {
       const callbacks = this.listeners.get(event);
-      const index = callbacks.indexOf(callback);
-      if (index > -1) {
-        callbacks.splice(index, 1);
-      }
+      this.listeners.set(
+        event,
+        callbacks.filter((cb) => cb !== callback)
+      );
     }
   }
 
   emitEvent(event, data) {
     if (this.listeners.has(event)) {
-      this.listeners.get(event).forEach((callback) => {
-        callback(data);
-      });
+      this.listeners.get(event).forEach((callback) => callback(data));
     }
   }
 
   isConnected() {
-    return this.socket && this.socket.connected;
+    return this.socket?.connected || false;
   }
 }
 

@@ -1,16 +1,16 @@
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 class APIClient {
   constructor() {
-    this.baseURL = API_URL;
+    this.baseURL = BASE_URL;
   }
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
 
     const headers = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     };
 
@@ -25,110 +25,114 @@ class APIClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: response.statusText };
+        }
+
         throw new Error(errorData.error || `API error: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error("❌ API request failed:", error.message);
       throw error;
     }
   }
 
-  // User endpoints
-  async upsertUser(userData) {
-    return this.request('/api/users/upsert', {
-      method: 'POST',
+  /* =========================
+     👤 USER APIs
+  ========================= */
+
+  upsertUser(userData) {
+    return this.request("/api/users/upsert", {
+      method: "POST",
       body: JSON.stringify(userData),
     });
   }
 
-  async getUser(email) {
-    return this.request(`/api/users/${email}`, { method: 'GET' });
+  getUser(email) {
+    return this.request(`/api/users/${email}`);
   }
 
-  async getUserProfile() {
-    return this.request('/api/users/profile', { method: 'GET' });
+  getUserProfile() {
+    return this.request("/api/users/profile");
   }
 
-  async updateUserProfile(profileData) {
-    return this.request('/api/users/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
+  updateUserProfile(data) {
+    return this.request("/api/users/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
     });
   }
 
-  async getUserStats() {
-    return this.request('/api/users/stats', { method: 'GET' });
+  getUserStats() {
+    return this.request("/api/users/stats");
   }
 
-  // Transaction endpoints
-  async getTransactions(filters = {}) {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, value);
-      }
+  /* =========================
+     💰 TRANSACTION APIs
+  ========================= */
+
+  getTransactions(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    const endpoint = params
+      ? `/api/transactions?${params}`
+      : "/api/transactions";
+
+    return this.request(endpoint);
+  }
+
+  getTransaction(id) {
+    return this.request(`/api/transactions/${id}`);
+  }
+
+  createTransaction(data) {
+    return this.request("/api/transactions", {
+      method: "POST",
+      body: JSON.stringify(data),
     });
-
-    const queryString = params.toString();
-    const endpoint = queryString ? `/api/transactions?${queryString}` : '/api/transactions';
-    return this.request(endpoint, { method: 'GET' });
   }
 
-  async getTransaction(id) {
-    return this.request(`/api/transactions/${id}`, { method: 'GET' });
-  }
-
-  async createTransaction(transactionData) {
-    return this.request('/api/transactions', {
-      method: 'POST',
-      body: JSON.stringify(transactionData),
-    });
-  }
-
-  async updateTransaction(id, transactionData) {
+  updateTransaction(id, data) {
     return this.request(`/api/transactions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(transactionData),
+      method: "PUT",
+      body: JSON.stringify(data),
     });
   }
 
-  async deleteTransaction(id) {
+  deleteTransaction(id) {
     return this.request(`/api/transactions/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
-  async getTransactionSummary(filters = {}) {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, value);
-      }
-    });
+  getTransactionSummary(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    const endpoint = params
+      ? `/api/transactions/analytics/summary?${params}`
+      : "/api/transactions/analytics/summary";
 
-    const queryString = params.toString();
-    const endpoint = queryString ? `/api/transactions/analytics/summary?${queryString}` : '/api/transactions/analytics/summary';
-    return this.request(endpoint, { method: 'GET' });
+    return this.request(endpoint);
   }
 
-  async getTransactionsByCategory(filters = {}) {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, value);
-      }
-    });
+  getTransactionsByCategory(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    const endpoint = params
+      ? `/api/transactions/analytics/by-category?${params}`
+      : "/api/transactions/analytics/by-category";
 
-    const queryString = params.toString();
-    const endpoint = queryString ? `/api/transactions/analytics/by-category?${queryString}` : '/api/transactions/analytics/by-category';
-    return this.request(endpoint, { method: 'GET' });
+    return this.request(endpoint);
   }
 
-  async checkHealth() {
-    return this.request('/api/health', { method: 'GET' });
+  /* =========================
+     🧪 HEALTH CHECK
+  ========================= */
+
+  checkHealth() {
+    return this.request("/api/health");
   }
 }
 

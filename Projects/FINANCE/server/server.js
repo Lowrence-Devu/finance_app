@@ -32,42 +32,41 @@ const io = new SocketIOServer(httpServer, {
 });
 
 /* =========================
-   ✅ SECURITY MIDDLEWARE
+   ✅ SECURITY
 ========================= */
 app.use(helmet());
 
-// Fix Firebase popup issue
+// Fix Firebase popup warning
 app.use((req, res, next) => {
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   next();
 });
 
 /* =========================
-   ✅ CORS CONFIG (IMPORTANT)
+   ✅ CORS (FIXED)
 ========================= */
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow Postman
+    if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
+      return callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      return callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
 }));
 
-// Handle preflight requests
+// ✅ FIXED (no crash now)
 app.options("/*", cors());
 
 /* =========================
-   ✅ RATE LIMITING
+   ✅ RATE LIMIT
 ========================= */
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: "Too many requests, please try again later.",
 });
 app.use('/api/', limiter);
 
@@ -83,17 +82,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
 /* =========================
-   ✅ DATABASE CONNECTION
+   ✅ DATABASE
 ========================= */
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  logger.warn('No MongoDB URI provided');
-} else {
+if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
     .then(() => logger.info('MongoDB connected'))
     .catch(err => logger.error('MongoDB error:', err));
+} else {
+  logger.warn('MongoDB URI not provided');
 }
 
 /* =========================
@@ -149,7 +148,7 @@ io.on('connection', (socket) => {
 });
 
 /* =========================
-   ✅ ERROR HANDLING
+   ✅ ERROR HANDLER
 ========================= */
 app.use((err, req, res, next) => {
   logger.error(err);
@@ -157,7 +156,7 @@ app.use((err, req, res, next) => {
 });
 
 /* =========================
-   ✅ 404 HANDLER
+   ✅ 404
 ========================= */
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });

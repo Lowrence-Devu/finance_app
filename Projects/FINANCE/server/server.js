@@ -19,7 +19,15 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://financeapp-pink.vercel.app"
 ];
+const cors = require('cors');
 
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://financeapp-pink.vercel.app"
+  ],
+  credentials: true
+}));
 /* =========================
    ✅ SOCKET.IO
 ========================= */

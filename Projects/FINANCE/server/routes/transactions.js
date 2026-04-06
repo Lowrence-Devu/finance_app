@@ -11,27 +11,30 @@ const mongoose = require('mongoose');
 ========================= */
 router.get('/', authMiddleware, validateTransactionQuery, handleValidationErrors, async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized: No userId' });
+    }
 
     const transactions = await Transaction.find({
-      user: mongoose.Types.ObjectId(req.userId)
-    });
+      user: new mongoose.Types.ObjectId(req.userId)
+    }).sort({ date: -1 });
 
     res.json({ success: true, data: transactions });
 
   } catch (err) {
+    console.error("GET ERROR:", err);
     logger.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
 /* =========================
-   ✅ ANALYTICS (MOVE UP)
+   ✅ ANALYTICS
 ========================= */
 router.get('/analytics/summary', authMiddleware, async (req, res) => {
   try {
     const summary = await Transaction.aggregate([
-      { $match: { user: mongoose.Types.ObjectId(req.userId) } },
+      { $match: { user: new mongoose.Types.ObjectId(req.userId) } },
       {
         $group: {
           _id: '$type',
@@ -43,6 +46,7 @@ router.get('/analytics/summary', authMiddleware, async (req, res) => {
     res.json({ success: true, data: summary });
 
   } catch (err) {
+    console.error("SUMMARY ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -50,7 +54,7 @@ router.get('/analytics/summary', authMiddleware, async (req, res) => {
 router.get('/analytics/by-category', authMiddleware, async (req, res) => {
   try {
     const data = await Transaction.aggregate([
-      { $match: { user: mongoose.Types.ObjectId(req.userId) } },
+      { $match: { user: new mongoose.Types.ObjectId(req.userId) } },
       {
         $group: {
           _id: '$category',
@@ -62,30 +66,48 @@ router.get('/analytics/by-category', authMiddleware, async (req, res) => {
     res.json({ success: true, data });
 
   } catch (err) {
+    console.error("CATEGORY ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 /* =========================
-   ✅ CREATE
+   ✅ CREATE TRANSACTION
 ========================= */
 router.post('/', authMiddleware, validateTransactionCreate, handleValidationErrors, async (req, res) => {
   try {
+    console.log("Incoming Body:", req.body);
+    console.log("User ID:", req.userId);
+
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized: No userId' });
+    }
+
+    const { amount, type, category, date, description } = req.body;
+
     const transaction = new Transaction({
-      ...req.body,
-      user: mongoose.Types.ObjectId(req.userId)
+      amount,
+      type,
+      category,
+      date,
+      description,
+      user: new mongoose.Types.ObjectId(req.userId)
     });
 
     await transaction.save();
+
+    console.log("Saved Transaction:", transaction);
+
     res.json({ success: true, data: transaction });
 
   } catch (err) {
+    console.error("CREATE ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 /* =========================
-   ✅ UPDATE
+   ✅ UPDATE TRANSACTION
 ========================= */
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
@@ -95,35 +117,52 @@ router.put('/:id', authMiddleware, async (req, res) => {
       { new: true }
     );
 
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
     res.json({ success: true, data: transaction });
 
   } catch (err) {
+    console.error("UPDATE ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 /* =========================
-   ✅ DELETE
+   ✅ DELETE TRANSACTION
 ========================= */
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    await Transaction.findByIdAndDelete(req.params.id);
+    const deleted = await Transaction.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
     res.json({ success: true });
 
   } catch (err) {
+    console.error("DELETE ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 /* =========================
-   ❗ DYNAMIC ROUTE LAST
+   ❗ GET SINGLE (LAST)
 ========================= */
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id);
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
     res.json({ success: true, data: transaction });
 
   } catch (err) {
+    console.error("GET BY ID ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });

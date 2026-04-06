@@ -109,9 +109,11 @@ function App() {
           <RoleProvider>
             <Router>
               <ConditionalNavbar />
-              <div style={{ paddingTop: '68px' }}>
+              <div style={{ paddingTop: '70px' }}>
+              <div style={{ paddingbottom: '70px' }}>
                 <SplashRoutes />
-              </div>
+                </div>
+                </div>
             </Router>
           </RoleProvider>
         </AuthProvider>

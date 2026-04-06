@@ -18,7 +18,7 @@ const AuthBg = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(270deg, #43cea2, #7b2ff2, #f357a8, #43cea2);
+  background: white;
   background-size: 600% 600%;
   animation: ${bgAnim} 12s ease-in-out infinite;
   position: relative;

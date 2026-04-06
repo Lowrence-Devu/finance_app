@@ -11,7 +11,7 @@ const Nav = styled.nav`
   top: 0;
   width: 100%;
   height: 64px;
-  background: ${({ theme }) => theme.card};
+  background: white;
   border-bottom: 1px solid ${({ theme }) => theme.border};
 
   display: flex;
@@ -94,7 +94,7 @@ const BottomNav = styled.div`
     width: 100%;
     height: 60px;
 
-    background: ${({ theme }) => theme.card};
+    background: white;
     border-top: 1px solid ${({ theme }) => theme.border};
 
     justify-content: space-around;
@@ -111,7 +111,8 @@ const BottomItem = styled(Link)`
   background: ${({ active, theme }) =>
     active ? theme.primary + '20' : 'transparent'} ;
     padding: 0.3rem 0.6rem;
-    
+  
+
   border-radius: 6px;
 
   &:hover {

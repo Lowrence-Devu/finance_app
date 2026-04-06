@@ -11,8 +11,8 @@ const Nav = styled.nav`
   top: 0;
   width: 100%;
   height: 64px;
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  background: ${({ theme }) => theme.card};
+  border-bottom: 1px solid ${({ theme }) => theme.border};
 
   display: flex;
   align-items: center;
@@ -23,7 +23,7 @@ const Nav = styled.nav`
 const NavContent = styled.div`
   width: 100%;
   max-width: 1200px;
-  padding: 0 1.5rem;
+  padding: 0 1rem;
 
   display: flex;
   align-items: center;
@@ -31,80 +31,87 @@ const NavContent = styled.div`
 `;
 
 const Brand = styled(Link)`
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: #0f172a;
+  color: ${({ theme }) => theme.text};
   text-decoration: none;
 `;
 
-const Links = styled.div`
+const DesktopLinks = styled.div`
   display: flex;
   gap: 1.5rem;
 
   @media (max-width: 768px) {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-
-    background: #ffffff;
-    border-top: 1px solid #e2e8f0;
-
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 100;
+    display: none;
   }
 `;
 
 const NavLink = styled(Link)`
   font-size: 0.9rem;
-  color: ${({ active }) => (active ? "#6366f1" : "#64748b")};
+  color: ${({ active, theme }) =>
+    active ? theme.primary : theme.subText};
   text-decoration: none;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  @media (max-width: 768px) {
-    font-size: 0.75rem;
-    flex-direction: column;
-  }
-
   &:hover {
-    color: #0f172a;
+    color: ${({ theme }) => theme.text};
   }
 `;
 
 const Right = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.8rem;
 `;
 
 const Avatar = styled.img`
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  object-fit: cover;
 `;
 
 const Button = styled.button`
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
   border: none;
-  background: #6366f1;
+  background: ${({ theme }) => theme.primary};
   color: white;
   cursor: pointer;
-
-  &:hover {
-    background: #4f46e5;
-  }
 
   @media (max-width: 768px) {
     display: none;
   }
+`;
+
+/* ================= MOBILE BOTTOM NAV ================= */
+
+const BottomNav = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+
+    background: ${({ theme }) => theme.card};
+    border-top: 1px solid ${({ theme }) => theme.border};
+
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+  }
+`;
+
+const BottomItem = styled(Link)`
+  font-size: 0.7rem;
+  text-decoration: none;
+  color: ${({ active, theme }) =>
+    active ? theme.primary : theme.subText};
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
 
 /* ================= COMPONENT ================= */
@@ -122,14 +129,14 @@ function Navbar() {
 
   return (
     <>
+      {/* TOP NAV */}
       <Nav>
         <NavContent>
 
-          {/* Brand */}
           <Brand to="/">FinDash</Brand>
 
-          {/* Desktop Links */}
-          <Links>
+          {/* Desktop */}
+          <DesktopLinks>
             {links.map(link => (
               <NavLink
                 key={link.to}
@@ -139,16 +146,15 @@ function Navbar() {
                 {link.label}
               </NavLink>
             ))}
-          </Links>
+          </DesktopLinks>
 
-          {/* Right Side */}
+          {/* Right */}
           <Right>
-            {/* Role Switcher (IMPORTANT) */}
             <RoleSwitcher />
 
             {user ? (
               <>
-                <Avatar src={user.avatar} alt="user" />
+                <Avatar src={user.avatar} />
                 <Button onClick={() => {
                   logout();
                   navigate('/login');
@@ -165,6 +171,19 @@ function Navbar() {
 
         </NavContent>
       </Nav>
+
+      {/* MOBILE BOTTOM NAV */}
+      <BottomNav>
+        {links.map(link => (
+          <BottomItem
+            key={link.to}
+            to={link.to}
+            active={location.pathname === link.to ? 1 : 0}
+          >
+            {link.label}
+          </BottomItem>
+        ))}
+      </BottomNav>
     </>
   );
 }

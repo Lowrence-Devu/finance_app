@@ -108,8 +108,10 @@ const BottomItem = styled(Link)`
   text-decoration: none;
   color: ${({ active, theme }) =>
     active ? theme.primary : theme.subText};
-  background: opacity(0.1);
-  padding: 0.3rem 0.6rem;
+  background: ${({ active, theme }) =>
+    active ? theme.primary + '20' : 'transparent'} ;
+    padding: 0.3rem 0.6rem;
+    
   border-radius: 6px;
 
   &:hover {

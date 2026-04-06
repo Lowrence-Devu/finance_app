@@ -1,91 +1,124 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import styled, { keyframes } from 'styled-components';
+import { motion } from 'framer-motion';
+import styled from 'styled-components';
 
-const shimmer = keyframes`
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-`;
+/* ================= STYLES ================= */
 
 const SplashBg = styled.div`
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, #232526 0%, #43cea2 100%);
+  inset: 0;
+  background: #0f172a; /* clean dark fintech bg */
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 9999;
 `;
 
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const LogoCircle = styled(motion.div)`
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #6366f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+`;
+
+const LogoText = styled.div`
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: white;
+`;
+
 const AppName = styled(motion.h1)`
-  font-size: 3.5rem;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: #fff;
-  margin-bottom: 1.2rem;
-  text-shadow: 0 8px 32px rgba(67,206,162,0.18);
-  background: linear-gradient(90deg, #7b2ff2 0%, #43cea2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: ${shimmer} 2.5s linear infinite;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #e2e8f0;
 `;
 
 const Tagline = styled(motion.div)`
-  font-size: 1.3rem;
-  color: #f8ffae;
-  font-weight: 500;
-  margin-bottom: 2.5rem;
-  letter-spacing: 1px;
+  font-size: 0.9rem;
+  color: #94a3b8;
 `;
 
-const AIGlow = styled(motion.div)`
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #43cea2 0%, #7b2ff2 80%, transparent 100%);
-  box-shadow: 0 0 32px 12px #43cea2aa, 0 0 64px 24px #7b2ff288;
-  margin-bottom: 2.2rem;
-  filter: blur(1px);
+const Loader = styled(motion.div)`
+  width: 120px;
+  height: 4px;
+  background: #1e293b;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 1rem;
 `;
+
+const Progress = styled(motion.div)`
+  height: 100%;
+  background: #6366f1;
+  border-radius: 10px;
+`;
+
+/* ================= COMPONENT ================= */
 
 function SplashScreen({ onFinish }) {
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      if (onFinish) onFinish();
-    }, 1800);
+      onFinish && onFinish();
+    }, 1500); // faster & smoother
+
     return () => clearTimeout(timer);
   }, [onFinish]);
 
   return (
     <SplashBg>
-      <AnimatePresence>
-        <AIGlow
-          initial={{ scale: 0.7, opacity: 0 }}
+      <Container>
+
+        {/* Logo */}
+        <LogoCircle
+          initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.7, opacity: 0 }}
-          transition={{ duration: 1.1, type: 'spring', stiffness: 80 }}
-        />
+          transition={{ duration: 0.4 }}
+        >
+          <LogoText>₹</LogoText>
+        </LogoCircle>
+
+        {/* App Name */}
         <AppName
-          initial={{ opacity: 0, y: 40, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -40, scale: 0.9 }}
-          transition={{ duration: 1.1, type: 'spring', stiffness: 80 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
         >
           FinDash
         </AppName>
+
+        {/* Tagline */}
         <Tagline
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
         >
-          Your Smart Path to Financial Freedom
+          Smart finance, simplified
         </Tagline>
-      </AnimatePresence>
+
+        {/* Loader */}
+        <Loader>
+          <Progress
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+          />
+        </Loader>
+
+      </Container>
     </SplashBg>
   );
 }
 
-export default SplashScreen; 
+export default SplashScreen;
